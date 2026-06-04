@@ -72,7 +72,6 @@ function parseBlock(block: string): PokemonSet | null {
     item: "",
     ability: "",
     moves: ["", "", "", ""],
-    teraType: "",
     nature: "",
     evs: {},
     stats: {},
@@ -100,7 +99,8 @@ function parseBlock(block: string): PokemonSet | null {
     }
 
     if (/^テラ(スタイプ)?\s*[:：]/.test(line)) {
-      mon.teraType = valueAfterColon(line);
+      // Pokémon Champions はテラスタル未解禁のため、テラスタイプ行は無視する。
+      // (技として誤認しないよう、ここで明示的に読み飛ばす)
     } else if (/^(特性|とくせい)\s*[:：]/.test(line)) {
       mon.ability = valueAfterColon(line);
     } else if (/^(性格|せいかく)\s*[:：]/.test(line)) {

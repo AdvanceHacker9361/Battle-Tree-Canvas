@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
+import { APP_VERSION } from "@/lib/version";
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
@@ -16,6 +17,12 @@ export function Logo({ className = "" }: { className?: string }) {
       </span>
       <span className="text-sm font-semibold tracking-tight text-slate-100 group-hover:text-white">
         Battle Tree Canvas
+      </span>
+      <span
+        className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-400"
+        title="アプリのバージョン"
+      >
+        v{APP_VERSION}
       </span>
     </Link>
   );

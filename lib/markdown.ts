@@ -56,7 +56,6 @@ function pokemonBlock(mon: PokemonSet, index: number): string {
   const meta = [
     mon.ability ? `特性: ${mon.ability}` : "",
     mon.nature ? `性格: ${mon.nature}` : "",
-    mon.teraType ? `テラス: ${mon.teraType}` : "",
   ].filter(Boolean);
   if (meta.length) lines.push(`   - ${meta.join(" / ")}`);
 

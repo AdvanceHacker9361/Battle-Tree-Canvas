@@ -98,19 +98,12 @@ function PokemonCard({
         />
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2">
         <input
           value={mon.nature ?? ""}
           disabled={readOnly}
           onChange={(e) => update({ nature: e.target.value })}
           placeholder="性格"
-          className="!py-1 !text-xs"
-        />
-        <input
-          value={mon.teraType ?? ""}
-          disabled={readOnly}
-          onChange={(e) => update({ teraType: e.target.value })}
-          placeholder="テラスタイプ"
           className="!py-1 !text-xs"
         />
       </div>
@@ -302,9 +295,6 @@ function TeamImportModal({
                       <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">
                         メガ候補
                       </Badge>
-                    )}
-                    {m.teraType && (
-                      <span className="text-slate-500">テラス:{m.teraType}</span>
                     )}
                     <span className="w-full truncate text-[11px] text-slate-500">
                       {m.moves.filter(Boolean).join(" / ")}
