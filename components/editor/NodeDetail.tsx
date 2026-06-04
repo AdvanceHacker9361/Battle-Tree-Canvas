@@ -23,7 +23,6 @@ import type {
   TurnNode,
 } from "@/lib/types";
 import { useEditor, useSelectedNode } from "./EditorContext";
-import { MegaCheck } from "./MegaCheck";
 
 function Collapsible({
   title,
@@ -720,7 +719,7 @@ export function NodeDetail() {
               value={node.title}
               disabled={readOnly}
               onChange={(e) => patch({ title: e.target.value })}
-              placeholder="例：初手とんぼ返り / メガ着地候補"
+              placeholder="例：初手とんぼ返り / 中盤の詰め"
             />
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -805,18 +804,6 @@ export function NodeDetail() {
           <DamageNotesEditor node={node} />
         </Collapsible>
 
-        {/* メガ着地チェック */}
-        <Collapsible
-          title="メガ着地チェック"
-          right={
-            node.megaLandingCheck ? (
-              <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">有効</Badge>
-            ) : null
-          }
-        >
-          <MegaCheck node={node} />
-        </Collapsible>
-
         {/* ルート評価 */}
         <Collapsible title="ルート評価（メガ依存度）" defaultOpen={false}>
           <RouteEvalEditor node={node} />
@@ -847,14 +834,6 @@ export function NodeDetail() {
             className="min-h-[80px] !text-sm"
           />
         </Collapsible>
-
-        {node.megaLandingCheck === undefined &&
-          project.myTeam.some((m) => m.isMegaCandidate) &&
-          node.lineTag === "mega_landing_candidate" && (
-            <p className="px-3 py-2 text-[11px] text-violet-400/70">
-              このノードは「メガ着地候補」です。メガ着地チェックの有効化をおすすめします。
-            </p>
-          )}
 
         <MegaRoleHint />
       </div>

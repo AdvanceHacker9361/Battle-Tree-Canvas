@@ -7,7 +7,6 @@ import type {
   BoardState,
   ActivePokemon,
   DamageNote,
-  MegaLandingCheck,
   RegulationId,
 } from "./types";
 import { SCHEMA_VERSION, BATTLE_MODES } from "./constants";
@@ -42,29 +41,6 @@ export function emptyPokemon(): PokemonSet {
 
 export function emptyTeam(): PokemonSet[] {
   return Array.from({ length: 6 }, () => emptyPokemon());
-}
-
-export function emptyMegaCheck(): MegaLandingCheck {
-  return {
-    beforeLanding: {
-      opponentChipped: "unknown",
-      scarfChecked: "unknown",
-      priorityChecked: "unknown",
-      keyDamageChecked: "unknown",
-    },
-    landingTurn: {
-      favorableMatchup: "unknown",
-      notImmediatelyRevengeKilled: "unknown",
-      supportAvailableInDouble: "unknown",
-      canProtectAndProgressInDouble: "unknown",
-    },
-    afterLanding: {
-      canProgressInTwoOrThreeTurns: "unknown",
-      backupLineStillExists: "unknown",
-      stableEndgameExists: "unknown",
-    },
-    note: "",
-  };
 }
 
 function emptyBoard(mode: BattleMode): BoardState {

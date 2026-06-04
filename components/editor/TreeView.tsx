@@ -77,7 +77,7 @@ export function TreeView() {
         <ul className="space-y-0.5">
           {rows.map(({ node, depth }) => {
             const risk = RISK_COLOR_MAP[node.riskColor];
-            const tag = LINE_TAG_MAP[node.lineTag];
+            const tag = LINE_TAG_MAP[node.lineTag] ?? LINE_TAG_MAP.pending;
             const isSelected = node.id === selectedId;
             const childCount = node.childIds.length;
             return (

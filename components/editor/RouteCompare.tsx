@@ -6,10 +6,9 @@ import {
   LINE_TAG_MAP,
   MEGA_DEPENDENCY_OPTIONS,
   NON_MEGA_AUTONOMY_OPTIONS,
-  MEGA_CHECK_GROUPS,
 } from "@/lib/constants";
 import { getLeafRoutes } from "@/lib/tree";
-import type { CheckValue, ReviewProject, TurnNode } from "@/lib/types";
+import type { ReviewProject, TurnNode } from "@/lib/types";
 import { useEditor } from "./EditorContext";
 
 // 経路内で最後に設定された値を拾う (末端優先)。
@@ -19,34 +18,6 @@ function lastDefined<T>(route: TurnNode[], pick: (n: TurnNode) => T | undefined)
     if (v !== undefined && v !== null && v !== "") return v;
   }
   return undefined;
-}
-
-function megaSummary(route: TurnNode[]): { label: string; tone: string } {
-  // 経路内のメガ着地チェックを集計。
-  const checks = route.map((n) => n.megaLandingCheck).filter(Boolean);
-  if (checks.length === 0) {
-    const hasCandidate = route.some((n) => n.lineTag === "mega_landing_candidate");
-    return hasCandidate
-      ? { label: "候補（未チェック）", tone: "text-amber-300" }
-      : { label: "—", tone: "text-slate-600" };
-  }
-  let ok = 0;
-  let total = 0;
-  let hasNo = false;
-  for (const c of checks) {
-    for (const g of MEGA_CHECK_GROUPS) {
-      for (const it of g.items) {
-        const v = (c![g.group] as Record<string, CheckValue>)[it.key];
-        if (v === undefined) continue;
-        total++;
-        if (v === "yes") ok++;
-        if (v === "no") hasNo = true;
-      }
-    }
-  }
-  if (hasNo) return { label: `危険 (○${ok}/${total})`, tone: "text-rose-300" };
-  if (ok === total) return { label: `安全 (○${ok}/${total})`, tone: "text-emerald-300" };
-  return { label: `注意 (○${ok}/${total})`, tone: "text-amber-300" };
 }
 
 function gradeLabel(
@@ -65,7 +36,6 @@ function RouteTable({ project, onSelect }: { project: ReviewProject; onSelect: (
           <tr className="border-b border-slate-800 bg-slate-900/60 text-left text-xs text-slate-400">
             <th className="px-3 py-2 font-medium">ルート（末端ノード）</th>
             <th className="px-3 py-2 font-medium">ラベル</th>
-            <th className="px-3 py-2 font-medium">メガ着地</th>
             <th className="px-3 py-2 font-medium">メガ依存度</th>
             <th className="px-3 py-2 font-medium">非メガ自立性</th>
             <th className="px-3 py-2 font-medium">リスク</th>
@@ -76,8 +46,7 @@ function RouteTable({ project, onSelect }: { project: ReviewProject; onSelect: (
           {routes.map((route, i) => {
             const leaf = route[route.length - 1];
             const risk = RISK_COLOR_MAP[leaf.riskColor];
-            const tag = LINE_TAG_MAP[leaf.lineTag];
-            const mega = megaSummary(route);
+            const tag = LINE_TAG_MAP[leaf.lineTag] ?? LINE_TAG_MAP.pending;
             const dep = lastDefined(route, (n) => n.routeEvaluation?.megaDependency);
             const auto = lastDefined(route, (n) => n.routeEvaluation?.nonMegaAutonomy);
             const memo = lastDefined(route, (n) => n.comment);
@@ -99,7 +68,6 @@ function RouteTable({ project, onSelect }: { project: ReviewProject; onSelect: (
                 <td className="px-3 py-2.5">
                   <Badge className={risk.chip}>{tag.label}</Badge>
                 </td>
-                <td className={`px-3 py-2.5 text-xs ${mega.tone}`}>{mega.label}</td>
                 <td className="px-3 py-2.5 text-xs text-slate-300">
                   {gradeLabel(dep, MEGA_DEPENDENCY_OPTIONS)}
                 </td>
@@ -174,7 +142,6 @@ export function RouteCompare({ onSelectNode }: { onSelectNode: (id: string) => v
   const { project } = useEditor();
   const all = Object.values(project.nodes);
   const collapsePoints = all.filter((n) => n.lineTag === "collapse_point");
-  const megaCandidates = all.filter((n) => n.lineTag === "mega_landing_candidate");
   const losingLines = all.filter((n) => n.lineTag === "losing_line");
 
   if (Object.keys(project.nodes).length <= 1) {
@@ -191,25 +158,18 @@ export function RouteCompare({ onSelectNode }: { onSelectNode: (id: string) => v
       <div>
         <h2 className="mb-2 text-sm font-semibold text-slate-200">ルート比較</h2>
         <p className="mb-3 text-xs text-slate-500">
-          末端ノードまでの各ルートを横並びで比較します（入力済みのラベル・チェック・評価を集計するだけで、AI分析は行いません）。行をクリックすると該当ノードを開きます。
+          末端ノードまでの各ルートを横並びで比較します（入力済みのラベル・評価を集計するだけで、AI分析は行いません）。行をクリックすると該当ノードを開きます。
         </p>
         <RouteTable project={project} onSelect={onSelectNode} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <NodeList
           title="崩壊ポイント"
           nodes={collapsePoints}
           emptyText="崩壊ポイントに指定されたノードはありません。"
           onSelect={onSelectNode}
           accent="text-rose-300"
-        />
-        <NodeList
-          title="メガ着地候補"
-          nodes={megaCandidates}
-          emptyText="メガ着地候補に指定されたノードはありません。"
-          onSelect={onSelectNode}
-          accent="text-violet-300"
         />
         <NodeList
           title="負け筋"

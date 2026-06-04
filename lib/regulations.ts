@@ -19,9 +19,9 @@ export type Regulation = {
   fullName: string;
   /** プロジェクト作成画面などに出す説明 */
   description: string;
-  /** メガ着地まわりの専用機能を主役として強調するか */
+  /** メガ個体を主役とする環境か */
   megaFocused: boolean;
-  /** メガ運用に関する補足 (チェック画面等のヒント) */
+  /** メガ運用に関する補足 (概要画面等のヒント) */
   focusNote: string;
   /** "active" = 現行 / "upcoming" = 移行予定 / "legacy" = 過去 */
   status: "active" | "upcoming" | "legacy";
@@ -35,10 +35,10 @@ export const REGULATIONS: Regulation[] = [
     label: "M-A",
     fullName: "Pokémon Champions Regulation M-A",
     description:
-      "メガシンカ個体を含む構築を前提とした環境。メガ着地局面の検討が勝敗に直結する。",
+      "メガシンカ個体を含む構築を前提とした環境。",
     megaFocused: true,
     focusNote:
-      "メガ個体をどの局面で場に出すかが重要。メガ着地チェックで着地前/着地ターン/着地後を整理する。",
+      "メガ個体を含む構築。メガ運用分類やメガ依存度メモで、どの個体をどう使うかを整理する。",
     status: "active",
   },
   {
@@ -49,7 +49,7 @@ export const REGULATIONS: Regulation[] = [
       "M-A の次期環境（移行予定）。詳細仕様は確定情報の公開後に更新する。現時点では M-A 同等の検討機能を利用可能。",
     megaFocused: true,
     focusNote:
-      "M-B の詳細ルールは未確定。環境移行後、メガ運用や着地チェック項目を実態に合わせて見直す。",
+      "M-B の詳細ルールは未確定。環境移行後、メガ運用などの項目を実態に合わせて見直す。",
     status: "upcoming",
   },
 ];

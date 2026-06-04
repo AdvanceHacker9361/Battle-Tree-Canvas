@@ -80,7 +80,6 @@ export type ActionType =
   | "move"
   | "switch"
   | "protect"
-  | "mega_landing"
   | "setup"
   | "speed_control"
   | "other";
@@ -140,37 +139,10 @@ export type LineTag =
   | "escape_line"
   | "losing_line"
   | "info_check"
-  | "mega_landing_candidate"
   | "collapse_point"
   | "pending";
 
 export type RiskColor = "green" | "yellow" | "red" | "blue" | "purple" | "gray";
-
-export type CheckValue = "yes" | "partial" | "no" | "unknown";
-
-export type MegaLandingCheck = {
-  beforeLanding: {
-    opponentChipped: CheckValue;
-    scarfChecked: CheckValue;
-    priorityChecked: CheckValue;
-    keyDamageChecked: CheckValue;
-  };
-
-  landingTurn: {
-    favorableMatchup: CheckValue;
-    notImmediatelyRevengeKilled: CheckValue;
-    supportAvailableInDouble?: CheckValue;
-    canProtectAndProgressInDouble?: CheckValue;
-  };
-
-  afterLanding: {
-    canProgressInTwoOrThreeTurns: CheckValue;
-    backupLineStillExists: CheckValue;
-    stableEndgameExists: CheckValue;
-  };
-
-  note?: string;
-};
 
 export type RouteEvaluation = {
   megaDependency?: "low" | "medium" | "high" | "danger";
@@ -202,7 +174,6 @@ export type TurnNode = {
   lineTag: LineTag;
   riskColor: RiskColor;
 
-  megaLandingCheck?: MegaLandingCheck;
   routeEvaluation?: RouteEvaluation;
 
   comment?: string;

@@ -1,11 +1,38 @@
 // localStorage 永続化レイヤ。
-import type { ReviewProject } from "./types";
+import type { ReviewProject, TurnNode, ActionRecord } from "./types";
 import { SCHEMA_VERSION } from "./constants";
 import { DEFAULT_REGULATION_ID } from "./regulations";
 
 const STORAGE_KEY = "btc.projects.v1";
 
 type Store = Record<string, ReviewProject>;
+
+// 「メガ着地」概念の削除に伴う旧データ移行。
+// 廃止した値 (lineTag: mega_landing_candidate / actionType: mega_landing /
+// フィールド: megaLandingCheck) を安全な状態へ正規化する。
+function migrateNode(node: TurnNode): TurnNode {
+  const next = { ...(node as TurnNode & { megaLandingCheck?: unknown }) };
+  delete (next as { megaLandingCheck?: unknown }).megaLandingCheck;
+  if ((next.lineTag as string) === "mega_landing_candidate") next.lineTag = "pending";
+  const fixAction = (a?: ActionRecord): ActionRecord | undefined =>
+    a && (a.actionType as string) === "mega_landing"
+      ? { ...a, actionType: "other" }
+      : a;
+  next.myAction = fixAction(next.myAction);
+  next.opponentAction = fixAction(next.opponentAction);
+  return next;
+}
+
+export function migrateProject(project: ReviewProject): ReviewProject {
+  const nodes: Record<string, TurnNode> = {};
+  for (const [id, n] of Object.entries(project.nodes)) nodes[id] = migrateNode(n);
+  return {
+    ...project,
+    // 旧データ (regulation 無し) は既定の M-A に寄せる。
+    regulation: project.regulation || DEFAULT_REGULATION_ID,
+    nodes,
+  };
+}
 
 function isBrowser(): boolean {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -35,13 +62,14 @@ function writeStore(store: Store): void {
 }
 
 export function listProjects(): ReviewProject[] {
-  return Object.values(readStore()).sort(
-    (a, b) => (b.updatedAt > a.updatedAt ? 1 : -1)
-  );
+  return Object.values(readStore())
+    .map(migrateProject)
+    .sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1));
 }
 
 export function getProject(id: string): ReviewProject | null {
-  return readStore()[id] ?? null;
+  const p = readStore()[id];
+  return p ? migrateProject(p) : null;
 }
 
 export function saveProject(project: ReviewProject): void {
@@ -75,7 +103,7 @@ export function normalizeProject(input: unknown): ReviewProject {
     throw new Error("ツリーのルートノードが見つかりません。");
   }
   const ts = new Date().toISOString();
-  return {
+  return migrateProject({
     id: p.id || `proj_${Math.random().toString(36).slice(2)}`,
     title: p.title || "無題のプロジェクト",
     mode: p.mode === "double" ? "double" : "single",
@@ -90,7 +118,7 @@ export function normalizeProject(input: unknown): ReviewProject {
     schemaVersion: p.schemaVersion ?? SCHEMA_VERSION,
     createdAt: p.createdAt || ts,
     updatedAt: ts,
-  };
+  });
 }
 
 export const PROJECT_FILE_VERSION = SCHEMA_VERSION;

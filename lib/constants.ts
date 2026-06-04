@@ -2,7 +2,6 @@
 import type {
   LineTag,
   RiskColor,
-  CheckValue,
   MegaRole,
   PokemonStatus,
   ActionType,
@@ -40,7 +39,6 @@ export const LINE_TAGS: { value: LineTag; label: string; meaning: string }[] = [
   { value: "escape_line", label: "非常線", meaning: "判定・詰め・相手ミス待ち" },
   { value: "losing_line", label: "負け筋", meaning: "勝ち筋がほぼ消える分岐" },
   { value: "info_check", label: "確認分岐", meaning: "相手の型・持ち物・S関係を見る枝" },
-  { value: "mega_landing_candidate", label: "メガ着地候補", meaning: "メガ個体を場に出す候補ターン" },
   { value: "collapse_point", label: "崩壊ポイント", meaning: "踏むと構築の勝ち筋が消える地点" },
   { value: "pending", label: "保留", meaning: "まだ判断できない枝" },
 ];
@@ -48,23 +46,6 @@ export const LINE_TAGS: { value: LineTag; label: string; meaning: string }[] = [
 export const LINE_TAG_MAP = Object.fromEntries(
   LINE_TAGS.map((t) => [t.value, t])
 ) as Record<LineTag, (typeof LINE_TAGS)[number]>;
-
-// ---- チェック値 ---------------------------------------------------------
-export const CHECK_VALUES: {
-  value: CheckValue;
-  label: string;
-  symbol: string;
-  chip: string;
-}[] = [
-  { value: "yes", label: "○ 良好", symbol: "○", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
-  { value: "partial", label: "△ 一部", symbol: "△", chip: "bg-amber-400/15 text-amber-300 border-amber-400/40" },
-  { value: "no", label: "× 不可", symbol: "×", chip: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
-  { value: "unknown", label: "－ 未確認", symbol: "－", chip: "bg-slate-500/15 text-slate-300 border-slate-500/40" },
-];
-
-export const CHECK_VALUE_MAP = Object.fromEntries(
-  CHECK_VALUES.map((c) => [c.value, c])
-) as Record<CheckValue, (typeof CHECK_VALUES)[number]>;
 
 // ---- メガ運用分類 -------------------------------------------------------
 export const MEGA_ROLES: { value: MegaRole; label: string; meaning: string }[] = [
@@ -97,7 +78,6 @@ export const ACTION_TYPES: { value: ActionType; label: string }[] = [
   { value: "move", label: "技" },
   { value: "switch", label: "交代" },
   { value: "protect", label: "守る" },
-  { value: "mega_landing", label: "メガ着地" },
   { value: "setup", label: "積み" },
   { value: "speed_control", label: "S操作" },
   { value: "other", label: "その他" },
@@ -134,43 +114,6 @@ export const NON_MEGA_AUTONOMY_OPTIONS: { value: "high" | "medium" | "low" | "da
 export const BATTLE_MODES: { value: BattleMode; label: string; slots: number }[] = [
   { value: "single", label: "シングル", slots: 1 },
   { value: "double", label: "ダブル", slots: 2 },
-];
-
-// ---- メガ着地チェック項目の表示定義 -------------------------------------
-export const MEGA_CHECK_GROUPS: {
-  group: "beforeLanding" | "landingTurn" | "afterLanding";
-  groupLabel: string;
-  items: { key: string; label: string; doubleOnly?: boolean }[];
-}[] = [
-  {
-    group: "beforeLanding",
-    groupLabel: "着地前",
-    items: [
-      { key: "opponentChipped", label: "相手を十分削れているか" },
-      { key: "scarfChecked", label: "相手のスカーフ候補を確認済みか" },
-      { key: "priorityChecked", label: "相手の先制技圏内ではないか" },
-      { key: "keyDamageChecked", label: "メガ後に一貫する技があるか" },
-    ],
-  },
-  {
-    group: "landingTurn",
-    groupLabel: "着地ターン",
-    items: [
-      { key: "favorableMatchup", label: "着地ターンに不利対面にならないか" },
-      { key: "notImmediatelyRevengeKilled", label: "すぐに縛り返されないか" },
-      { key: "supportAvailableInDouble", label: "横が猫/指/威嚇/S操作で補助できるか", doubleOnly: true },
-      { key: "canProtectAndProgressInDouble", label: "守る時に横が盤面を進められるか", doubleOnly: true },
-    ],
-  },
-  {
-    group: "afterLanding",
-    groupLabel: "着地後",
-    items: [
-      { key: "canProgressInTwoOrThreeTurns", label: "2〜3ターンで崩しが進むか" },
-      { key: "backupLineStillExists", label: "メガが倒れても第2軸が残るか" },
-      { key: "stableEndgameExists", label: "終盤を詰め切れる形があるか" },
-    ],
-  },
 ];
 
 // 共通色トークン
