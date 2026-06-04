@@ -1,9 +1,10 @@
 // localStorage 永続化レイヤ。
-import type { ReviewProject, TurnNode, ActionRecord } from "./types";
+import type { ReviewProject, TurnNode, ActionRecord, SavedTeam } from "./types";
 import { SCHEMA_VERSION } from "./constants";
 import { DEFAULT_REGULATION_ID } from "./regulations";
 
 const STORAGE_KEY = "btc.projects.v1";
+const TEAMS_KEY = "btc.teams.v1";
 
 type Store = Record<string, ReviewProject>;
 
@@ -118,6 +119,7 @@ export function normalizeProject(input: unknown): ReviewProject {
     regulation: p.regulation || DEFAULT_REGULATION_ID,
     myTeam: Array.isArray(p.myTeam) ? p.myTeam : [],
     opponentTeam: Array.isArray(p.opponentTeam) ? p.opponentTeam : [],
+    sourceTeamId: p.sourceTeamId,
     rootNodeId: p.rootNodeId,
     nodes: p.nodes,
     projectNotes: p.projectNotes ?? "",
@@ -129,3 +131,51 @@ export function normalizeProject(input: unknown): ReviewProject {
 }
 
 export const PROJECT_FILE_VERSION = SCHEMA_VERSION;
+
+// ---- マイ構築 (SavedTeam) ストア ------------------------------------------
+type TeamStore = Record<string, SavedTeam>;
+
+function readTeamStore(): TeamStore {
+  if (!isBrowser()) return {};
+  try {
+    const raw = window.localStorage.getItem(TEAMS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as TeamStore;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (e) {
+    console.error("Battle Tree Canvas: マイ構築の読み込みに失敗しました", e);
+    return {};
+  }
+}
+
+function writeTeamStore(store: TeamStore): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(TEAMS_KEY, JSON.stringify(store));
+  } catch (e) {
+    console.error("Battle Tree Canvas: マイ構築の保存に失敗しました", e);
+    throw e;
+  }
+}
+
+export function listTeams(): SavedTeam[] {
+  return Object.values(readTeamStore()).sort(
+    (a, b) => (b.updatedAt > a.updatedAt ? 1 : -1)
+  );
+}
+
+export function getTeam(id: string): SavedTeam | null {
+  return readTeamStore()[id] ?? null;
+}
+
+export function saveTeam(team: SavedTeam): void {
+  const store = readTeamStore();
+  store[team.id] = { ...team, updatedAt: new Date().toISOString() };
+  writeTeamStore(store);
+}
+
+export function deleteTeam(id: string): void {
+  const store = readTeamStore();
+  delete store[id];
+  writeTeamStore(store);
+}

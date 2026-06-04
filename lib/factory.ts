@@ -8,6 +8,7 @@ import type {
   ActivePokemon,
   DamageNote,
   RegulationId,
+  SavedTeam,
 } from "./types";
 import { SCHEMA_VERSION, BATTLE_MODES } from "./constants";
 import { DEFAULT_REGULATION_ID } from "./regulations";
@@ -41,6 +42,39 @@ export function emptyPokemon(): PokemonSet {
 
 export function emptyTeam(): PokemonSet[] {
   return Array.from({ length: 6 }, () => emptyPokemon());
+}
+
+// 6体になるよう整形しつつ、各ポケモンに新しいIDを振ってディープコピーする。
+// マイ構築 ⇔ プロジェクト間でIDを共有しないことで、参照の混線を防ぐ。
+export function clonePokemonTeam(team: PokemonSet[]): PokemonSet[] {
+  const src = (typeof structuredClone === "function"
+    ? structuredClone(team)
+    : (JSON.parse(JSON.stringify(team)) as PokemonSet[])) as PokemonSet[];
+  const result: PokemonSet[] = [];
+  for (let i = 0; i < 6; i++) {
+    const mon = src[i];
+    result.push(mon ? { ...mon, id: uid("p") } : emptyPokemon());
+  }
+  return result;
+}
+
+export function createSavedTeam(
+  name: string,
+  mode: BattleMode,
+  regulation: RegulationId = DEFAULT_REGULATION_ID,
+  pokemon?: PokemonSet[]
+): SavedTeam {
+  const ts = nowIso();
+  return {
+    id: uid("team"),
+    name: name || "無題のマイ構築",
+    mode,
+    regulation,
+    pokemon: pokemon ? clonePokemonTeam(pokemon) : emptyTeam(),
+    notes: "",
+    createdAt: ts,
+    updatedAt: ts,
+  };
 }
 
 function emptyBoard(mode: BattleMode): BoardState {
@@ -102,7 +136,8 @@ export function createNode(
 export function createProject(
   title: string,
   mode: BattleMode,
-  regulation: RegulationId = DEFAULT_REGULATION_ID
+  regulation: RegulationId = DEFAULT_REGULATION_ID,
+  opts: { myTeam?: PokemonSet[]; sourceTeamId?: string } = {}
 ): ReviewProject {
   const ts = nowIso();
   const root = createNode(mode, { turnNumber: 1, title: "Turn 1：初手局面" });
@@ -111,8 +146,9 @@ export function createProject(
     title: title || "無題のプロジェクト",
     mode,
     regulation,
-    myTeam: emptyTeam(),
+    myTeam: opts.myTeam ? clonePokemonTeam(opts.myTeam) : emptyTeam(),
     opponentTeam: emptyTeam(),
+    sourceTeamId: opts.sourceTeamId,
     rootNodeId: root.id,
     nodes: { [root.id]: root },
     projectNotes: "",

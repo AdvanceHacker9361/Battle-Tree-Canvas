@@ -6,7 +6,7 @@ import { TopBar } from "@/components/TopBar";
 import { Button, Field, Badge, EmptyState, confirmAction } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { BATTLE_MODES } from "@/lib/constants";
-import { createProject } from "@/lib/factory";
+import { createProject, createSavedTeam } from "@/lib/factory";
 import {
   selectableRegulations,
   getRegulation,
@@ -17,9 +17,12 @@ import {
   saveProject,
   deleteProject,
   upsertImported,
+  listTeams,
+  saveTeam,
+  deleteTeam,
 } from "@/lib/storage";
 import { importProjectFromFile } from "@/lib/io";
-import type { BattleMode, RegulationId, ReviewProject } from "@/lib/types";
+import type { BattleMode, RegulationId, ReviewProject, SavedTeam } from "@/lib/types";
 
 function formatDate(iso: string): string {
   try {
@@ -60,6 +63,7 @@ function TeamIcons({ team }: { team: ReviewProject["myTeam"] }) {
 export default function DashboardPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ReviewProject[]>([]);
+  const [teams, setTeams] = useState<SavedTeam[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -68,12 +72,47 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => setProjects(listProjects());
+  const refresh = () => {
+    setProjects(listProjects());
+    setTeams(listTeams());
+  };
 
   useEffect(() => {
     refresh();
     setLoaded(true);
   }, []);
+
+  const teamName = (teamId?: string) =>
+    teamId ? teams.find((t) => t.id === teamId)?.name : undefined;
+
+  // ---- マイ構築 ----
+  const handleCreateTeam = () => {
+    const team = createSavedTeam("新しいマイ構築", newMode, newRegulation);
+    saveTeam(team);
+    router.push(`/team/?id=${team.id}`);
+  };
+
+  const handleDuplicateTeam = (t: SavedTeam) => {
+    const copy = createSavedTeam(`${t.name} のコピー`, t.mode, t.regulation, t.pokemon);
+    saveTeam(copy);
+    refresh();
+  };
+
+  const handleDeleteTeam = (t: SavedTeam) => {
+    if (!confirmAction(`マイ構築「${t.name}」を削除します。よろしいですか？（作成済みのシミュレーションは残ります）`))
+      return;
+    deleteTeam(t.id);
+    refresh();
+  };
+
+  const handleCreateSimFromTeam = (t: SavedTeam) => {
+    const proj = createProject(`${t.name} のシミュレーション`, t.mode, t.regulation, {
+      myTeam: t.pokemon,
+      sourceTeamId: t.id,
+    });
+    saveProject(proj);
+    router.push(`/project/?id=${proj.id}`);
+  };
 
   const handleCreate = () => {
     const project = createProject(
@@ -138,6 +177,9 @@ export default function DashboardPage() {
         <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
           JSONインポート
         </Button>
+        <Button variant="secondary" size="sm" onClick={handleCreateTeam}>
+          + マイ構築
+        </Button>
         <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
           + 新規プロジェクト
         </Button>
@@ -157,10 +199,77 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* マイ構築セクション */}
+        {loaded && teams.length > 0 && (
+          <section className="mb-10">
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-200">マイ構築</h2>
+              <span className="text-xs text-slate-600">
+                保存した自分の構築。ここから何度でもシミュレーションを作成できます。
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {teams.map((t) => {
+                const tMode = BATTLE_MODES.find((m) => m.value === t.mode);
+                const simCount = projects.filter((p) => p.sourceTeamId === t.id).length;
+                return (
+                  <div
+                    key={t.id}
+                    className="group flex flex-col rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition-colors hover:border-slate-700"
+                  >
+                    <button onClick={() => router.push(`/team/?id=${t.id}`)} className="flex-1 text-left">
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <h3 className="line-clamp-2 font-semibold text-slate-100 group-hover:text-white">
+                          {t.name}
+                        </h3>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <Badge className="border-slate-700 bg-slate-800 text-slate-300">
+                            {tMode?.label}
+                          </Badge>
+                          <Badge className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+                            {getRegulation(t.regulation).label}
+                          </Badge>
+                        </div>
+                      </div>
+                      <TeamIcons team={t.pokemon} />
+                      <div className="mt-3 flex items-center gap-3 text-[11px] text-slate-500">
+                        <span>シミュレーション {simCount}</span>
+                        <span>更新 {formatDate(t.updatedAt)}</span>
+                      </div>
+                    </button>
+                    <div className="mt-3 flex items-center gap-1 border-t border-slate-800 pt-3">
+                      <Button size="sm" variant="primary" onClick={() => handleCreateSimFromTeam(t)}>
+                        シミュレーション作成
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => router.push(`/team/?id=${t.id}`)}>
+                        編集
+                      </Button>
+                      <div className="flex-1" />
+                      <Button size="sm" variant="ghost" onClick={() => handleDuplicateTeam(t)}>
+                        複製
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteTeam(t)}>
+                        <span className="text-rose-400">削除</span>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {loaded && (projects.length > 0 || teams.length > 0) && (
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-200">シミュレーション</h2>
+            <span className="text-xs text-slate-600">対戦分岐ツリーの検討（プロジェクト）</span>
+          </div>
+        )}
+
         {!loaded ? null : projects.length === 0 ? (
           <EmptyState
             title="まだプロジェクトがありません"
-            description="「新規プロジェクト」から検討単位を作成し、構築6体と対戦分岐ツリーを記録できます。既存のJSONファイルをインポートして再開することもできます。"
+            description="「新規プロジェクト」から検討単位を作成し、構築6体と対戦分岐ツリーを記録できます。「マイ構築」を保存しておくと、同じ構築で複数のシミュレーションを素早く作れます。"
             action={
               <Button variant="primary" onClick={() => setShowCreate(true)}>
                 + 最初のプロジェクトを作成
@@ -216,9 +325,12 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    <div className="mt-3 flex items-center gap-3 text-[11px] text-slate-500">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                       <span>ノード {nodeCount}</span>
                       <span>更新 {formatDate(p.updatedAt)}</span>
+                      {teamName(p.sourceTeamId) && (
+                        <span className="text-slate-600">元: {teamName(p.sourceTeamId)}</span>
+                      )}
                     </div>
                   </button>
 

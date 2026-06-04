@@ -13,6 +13,20 @@
 
 （次回リリース予定の変更をここに追記）
 
+## [0.2.0] - 2026-06-04
+
+### Added
+
+- **マイ構築ライブラリ** — 自分の構築を「マイ構築」として保存・編集・複製・削除できる独立した保存領域を追加（localStorage `btc.teams.v1`）。
+- マイ構築から「この構築でシミュレーション作成」で、自分の6体をコピーした新規プロジェクトを生成（スナップショット方式。元のマイ構築・他のシミュレーションには影響しない）。
+- プロジェクト編集画面に「マイ構築として保存」を追加。
+- ダッシュボードを「マイ構築」「シミュレーション」の2セクションに整理。シミュレーションのカードに作成元マイ構築名を表示。
+- マイ構築編集ページ `/team` を追加。
+
+### Changed
+
+- 構築編集UIを文脈非依存の `TeamGrid` コンポーネントに切り出し、プロジェクトとマイ構築の双方で再利用。
+
 ## [0.1.1] - 2026-06-04
 
 ### Changed
@@ -44,6 +58,7 @@
 - 本プロダクトは AI 分析・最善手提案・構築診断・自動勝率計算を**行わない**手動キャンバス。
 - Pokémon Champions の仕様に合わせ、天候は「雪」（霰なし）。テラスタルは M-B まで未解禁のため**非対応**。
 
-[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/releases/tag/v0.1.0

@@ -195,6 +195,9 @@ export type ReviewProject = {
   myTeam: PokemonSet[];
   opponentTeam: PokemonSet[];
 
+  // このプロジェクトの自分の構築が、どの保存済みマイ構築から作られたか (任意)。
+  sourceTeamId?: string;
+
   rootNodeId: string;
   nodes: Record<string, TurnNode>;
 
@@ -202,6 +205,18 @@ export type ReviewProject = {
   tags: string[];
 
   schemaVersion: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// 再利用可能な「マイ構築」(自分の6体)。複数のシミュレーション(プロジェクト)の起点になる。
+export type SavedTeam = {
+  id: string;
+  name: string;
+  mode: BattleMode; // 既定の対戦形式
+  regulation: RegulationId;
+  pokemon: PokemonSet[];
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 };
