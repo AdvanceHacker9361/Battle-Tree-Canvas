@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import { emptyDamageNote, uid } from "@/lib/factory";
 import { updateNode } from "@/lib/tree";
+import { parseDamageText, matchRosterId, type ParsedDamage } from "@/lib/damageParse";
 import type {
   ActionRecord,
   DamageNote,
@@ -144,12 +145,351 @@ function ActionEditor({
   );
 }
 
-function DamageNotesEditor({ node }: { node: TurnNode }) {
+// 盤面上で指定ポケモンが立っているスロットを探す。
+function findActiveSlot(
+  node: TurnNode,
+  setId: string
+): { side: "myActive" | "opponentActive"; index: number } | null {
+  if (!setId) return null;
+  const sides: ("myActive" | "opponentActive")[] = ["myActive", "opponentActive"];
+  for (const side of sides) {
+    const idx = node.boardState[side].findIndex((a) => a.pokemonSetId === setId);
+    if (idx >= 0) return { side, index: idx };
+  }
+  return null;
+}
+
+function clampHp(v: number): number {
+  return Math.max(0, Math.min(100, Math.round(v * 10) / 10));
+}
+
+// Phase 4: ダメ計コピペ解析パネル
+function DamagePastePanel({ node }: { node: TurnNode }) {
+  const { project, mutate } = useEditor();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [parsed, setParsed] = useState<ParsedDamage[] | null>(null);
+  const roster = [...project.myTeam, ...project.opponentTeam];
+  const nameOf = (id: string) => roster.find((m) => m.id === id)?.species ?? "";
+
+  const resolved = (parsed ?? []).map((p) => ({
+    p,
+    attackerId: matchRosterId(p.attackerName, roster) ?? "",
+    defenderId: matchRosterId(p.defenderName, roster) ?? "",
+  }));
+
+  const handleParse = () => setParsed(parseDamageText(text));
+
+  const addAll = () => {
+    if (!resolved.length) return;
+    const newNotes: DamageNote[] = resolved.map(({ p, attackerId, defenderId }) => {
+      const note = emptyDamageNote();
+      note.attackerId = attackerId;
+      note.defenderId = defenderId;
+      note.moveName = p.moveName ?? "";
+      note.damageMinPercent = p.damageMinPercent;
+      note.damageMaxPercent = p.damageMaxPercent;
+      note.koText = p.koText ?? "";
+      if (p.inPriorityRange) note.inPriorityRange = true;
+      if (p.inScarfRange) note.inScarfRange = true;
+      note.calcText = p.raw;
+      return note;
+    });
+    mutate((pj) =>
+      updateNode(pj, node.id, {
+        damageNotes: [...pj.nodes[node.id].damageNotes, ...newNotes],
+      })
+    );
+    setText("");
+    setParsed(null);
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="secondary" className="w-full" onClick={() => setOpen(true)}>
+        📋 ダメ計を貼り付けて解析
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-xs font-medium text-blue-200">ダメ計コピペ解析</span>
+        <button
+          onClick={() => {
+            setOpen(false);
+            setParsed(null);
+          }}
+          className="text-[11px] text-slate-500 hover:text-slate-300"
+        >
+          閉じる
+        </button>
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={
+          "外部ダメ計の結果を貼り付け（複数行可）。例：\nサンダー@チョッキ 10まんボルト → メガガルーラ 50.8〜60.1% 確定2発\nすてみタックル → HBサンダー 42.3〜50.8% 乱数2発"
+        }
+        className="min-h-[72px] !text-xs"
+      />
+      <div className="mt-1.5 flex gap-2">
+        <Button size="sm" variant="secondary" onClick={handleParse} disabled={!text.trim()}>
+          解析
+        </Button>
+        {parsed && resolved.length > 0 && (
+          <Button size="sm" variant="primary" onClick={addAll}>
+            {resolved.length}件をメモに追加
+          </Button>
+        )}
+      </div>
+
+      {parsed && (
+        <div className="mt-2 space-y-1.5">
+          {resolved.length === 0 ? (
+            <p className="text-[11px] text-amber-300">
+              %範囲を検出できませんでした。テキストを確認してください。
+            </p>
+          ) : (
+            resolved.map(({ p, attackerId, defenderId }, i) => (
+              <div
+                key={i}
+                className="rounded bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-300"
+              >
+                <div className="flex flex-wrap items-center gap-x-1.5">
+                  <span className={attackerId ? "text-sky-300" : "text-slate-500"}>
+                    {attackerId ? nameOf(attackerId) : p.attackerName ?? "攻撃側?"}
+                  </span>
+                  {p.moveName && <span className="text-slate-400">{p.moveName}</span>}
+                  <span className="text-slate-600">→</span>
+                  <span className={defenderId ? "text-rose-300" : "text-slate-500"}>
+                    {defenderId ? nameOf(defenderId) : p.defenderName ?? "防御側?"}
+                  </span>
+                  {p.damageMinPercent != null && (
+                    <span className="font-medium text-slate-200">
+                      {p.damageMinPercent}〜{p.damageMaxPercent}%
+                    </span>
+                  )}
+                  {p.koText && <span className="text-amber-300">{p.koText}</span>}
+                  {p.inPriorityRange && <span className="text-violet-300">先制圏内</span>}
+                  {p.inScarfRange && <span className="text-violet-300">スカーフ圏内</span>}
+                </div>
+                {((p.attackerName && !attackerId) ||
+                  (p.defenderName && !defenderId)) && (
+                  <div className="mt-0.5 text-[10px] text-slate-600">
+                    ※ 構築と自動照合できなかった名前は、追加後にメモ内のプルダウンで指定してください。
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DamageNoteCard({ node, d }: { node: TurnNode; d: DamageNote }) {
   const { project, mutate, readOnly } = useEditor();
   const allMons = [...project.myTeam, ...project.opponentTeam].filter((m) =>
     m.species.trim()
   );
   const nameOf = (id: string) => allMons.find((m) => m.id === id)?.species ?? "";
+
+  const patch = (dp: Partial<DamageNote>) => {
+    mutate((p) =>
+      updateNode(p, node.id, {
+        damageNotes: p.nodes[node.id].damageNotes.map((x) =>
+          x.id === d.id ? { ...x, ...dp } : x
+        ),
+      })
+    );
+  };
+  const remove = () => {
+    mutate((p) =>
+      updateNode(p, node.id, {
+        damageNotes: p.nodes[node.id].damageNotes.filter((x) => x.id !== d.id),
+      })
+    );
+  };
+
+  // HP%半自動反映: 防御側が盤面にいれば、現在HPからダメージ%を引く。
+  const slot = findActiveSlot(node, d.defenderId);
+  const applyDamage = (percent?: number) => {
+    if (percent == null || !slot) return;
+    mutate((p) => {
+      const cur = p.nodes[node.id];
+      const arr = [...cur.boardState[slot.side]];
+      arr[slot.index] = {
+        ...arr[slot.index],
+        hpPercent: clampHp(arr[slot.index].hpPercent - percent),
+      };
+      const notes = cur.damageNotes.map((x) =>
+        x.id === d.id ? { ...x, actualDamagePercent: percent } : x
+      );
+      return updateNode(p, node.id, {
+        boardState: { ...cur.boardState, [slot.side]: arr },
+        damageNotes: notes,
+      });
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-2.5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs">
+        <select
+          value={d.attackerId}
+          disabled={readOnly}
+          onChange={(e) => patch({ attackerId: e.target.value })}
+          className="!py-0.5 !text-xs"
+        >
+          <option value="">攻撃側</option>
+          {allMons.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.species}
+            </option>
+          ))}
+        </select>
+        <span className="text-slate-600">→</span>
+        <select
+          value={d.defenderId}
+          disabled={readOnly}
+          onChange={(e) => patch({ defenderId: e.target.value })}
+          className="!py-0.5 !text-xs"
+        >
+          <option value="">防御側</option>
+          {allMons.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.species}
+            </option>
+          ))}
+        </select>
+      </div>
+      <input
+        value={d.moveName}
+        disabled={readOnly}
+        onChange={(e) => patch({ moveName: e.target.value })}
+        placeholder="技名"
+        className="mb-1.5 !py-0.5 !text-xs"
+      />
+      <div className="mb-1.5 grid grid-cols-3 gap-1.5">
+        <NumPercent label="最小%" value={d.damageMinPercent} readOnly={readOnly} onChange={(v) => patch({ damageMinPercent: v })} />
+        <NumPercent label="最大%" value={d.damageMaxPercent} readOnly={readOnly} onChange={(v) => patch({ damageMaxPercent: v })} />
+        <NumPercent label="想定%" value={d.actualDamagePercent} readOnly={readOnly} onChange={(v) => patch({ actualDamagePercent: v })} />
+      </div>
+
+      {/* HP%半自動反映 */}
+      {!readOnly && (
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-500">HPに反映:</span>
+          <button
+            disabled={!slot || d.damageMinPercent == null}
+            onClick={() => applyDamage(d.damageMinPercent)}
+            title={slot ? `防御側のHPから ${d.damageMinPercent}% を引く` : "防御側が盤面にいません"}
+            className="rounded border border-slate-700 bg-slate-800/50 px-1.5 py-0.5 text-[11px] text-slate-300 hover:border-slate-600 disabled:opacity-30"
+          >
+            最小
+          </button>
+          <button
+            disabled={!slot || d.damageMaxPercent == null}
+            onClick={() => applyDamage(d.damageMaxPercent)}
+            title={slot ? `防御側のHPから ${d.damageMaxPercent}% を引く` : "防御側が盤面にいません"}
+            className="rounded border border-slate-700 bg-slate-800/50 px-1.5 py-0.5 text-[11px] text-slate-300 hover:border-slate-600 disabled:opacity-30"
+          >
+            最大
+          </button>
+          {slot && (
+            <span className="text-[10px] text-slate-600">
+              現在 {node.boardState[slot.side][slot.index].hpPercent}%
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* 確定数メモ + 圏内フラグ */}
+      <input
+        value={d.koText ?? ""}
+        disabled={readOnly}
+        onChange={(e) => patch({ koText: e.target.value })}
+        placeholder="確定数（例：確定2発 / 乱数1発 (87.5%)）"
+        className="mb-1.5 !py-0.5 !text-xs"
+      />
+      {!readOnly ? (
+        <div className="mb-1.5 flex gap-1.5">
+          <button
+            onClick={() => patch({ inPriorityRange: !d.inPriorityRange })}
+            className={`rounded border px-2 py-0.5 text-[11px] ${
+              d.inPriorityRange
+                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
+                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            先制技圏内
+          </button>
+          <button
+            onClick={() => patch({ inScarfRange: !d.inScarfRange })}
+            className={`rounded border px-2 py-0.5 text-[11px] ${
+              d.inScarfRange
+                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
+                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            スカーフ圏内
+          </button>
+        </div>
+      ) : (
+        (d.inPriorityRange || d.inScarfRange) && (
+          <div className="mb-1.5 flex gap-1.5">
+            {d.inPriorityRange && (
+              <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">先制技圏内</Badge>
+            )}
+            {d.inScarfRange && (
+              <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">スカーフ圏内</Badge>
+            )}
+          </div>
+        )
+      )}
+
+      <textarea
+        value={d.calcText ?? ""}
+        disabled={readOnly}
+        onChange={(e) => patch({ calcText: e.target.value })}
+        placeholder="ダメ計結果の貼り付け（例：すてみタックル → HBサンダー 42.3〜50.8%）"
+        className="mb-1.5 min-h-[40px] !text-xs"
+      />
+      <input
+        value={d.note ?? ""}
+        disabled={readOnly}
+        onChange={(e) => patch({ note: e.target.value })}
+        placeholder="備考（反動・急所・補正など）"
+        className="!py-0.5 !text-xs"
+      />
+      {(d.attackerId || d.defenderId) && (
+        <div className="mt-1.5 text-[11px] text-slate-500">
+          {nameOf(d.attackerId)} → {nameOf(d.defenderId)}
+          {d.damageMinPercent != null && d.damageMaxPercent != null && (
+            <span className="ml-1 text-slate-400">
+              {d.damageMinPercent}〜{d.damageMaxPercent}%
+            </span>
+          )}
+          {d.koText && <span className="ml-1 text-amber-300/80">{d.koText}</span>}
+        </div>
+      )}
+      {!readOnly && (
+        <div className="mt-2 flex justify-end">
+          <button onClick={remove} className="text-[11px] text-slate-500 hover:text-rose-400">
+            このダメージメモを削除
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DamageNotesEditor({ node }: { node: TurnNode }) {
+  const { mutate, readOnly } = useEditor();
 
   const add = () => {
     mutate((p) =>
@@ -158,127 +498,21 @@ function DamageNotesEditor({ node }: { node: TurnNode }) {
       })
     );
   };
-  const patch = (id: string, dp: Partial<DamageNote>) => {
-    mutate((p) =>
-      updateNode(p, node.id, {
-        damageNotes: p.nodes[node.id].damageNotes.map((d) =>
-          d.id === id ? { ...d, ...dp } : d
-        ),
-      })
-    );
-  };
-  const remove = (id: string) => {
-    mutate((p) =>
-      updateNode(p, node.id, {
-        damageNotes: p.nodes[node.id].damageNotes.filter((d) => d.id !== id),
-      })
-    );
-  };
 
   return (
     <div className="space-y-3">
+      {!readOnly && <DamagePastePanel node={node} />}
       {node.damageNotes.length === 0 && (
         <p className="text-xs text-slate-600">
-          外部ダメージ計算ツールの結果を貼り付けて記録できます。
+          外部ダメージ計算ツールの結果を貼り付けて解析するか、手入力で記録できます。
         </p>
       )}
       {node.damageNotes.map((d) => (
-        <div key={d.id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-2.5">
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs">
-            <select
-              value={d.attackerId}
-              disabled={readOnly}
-              onChange={(e) => patch(d.id, { attackerId: e.target.value })}
-              className="!py-0.5 !text-xs"
-            >
-              <option value="">攻撃側</option>
-              {allMons.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.species}
-                </option>
-              ))}
-            </select>
-            <span className="text-slate-600">→</span>
-            <select
-              value={d.defenderId}
-              disabled={readOnly}
-              onChange={(e) => patch(d.id, { defenderId: e.target.value })}
-              className="!py-0.5 !text-xs"
-            >
-              <option value="">防御側</option>
-              {allMons.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.species}
-                </option>
-              ))}
-            </select>
-          </div>
-          <input
-            value={d.moveName}
-            disabled={readOnly}
-            onChange={(e) => patch(d.id, { moveName: e.target.value })}
-            placeholder="技名"
-            className="mb-1.5 !py-0.5 !text-xs"
-          />
-          <div className="mb-1.5 grid grid-cols-3 gap-1.5">
-            <NumPercent
-              label="最小%"
-              value={d.damageMinPercent}
-              readOnly={readOnly}
-              onChange={(v) => patch(d.id, { damageMinPercent: v })}
-            />
-            <NumPercent
-              label="最大%"
-              value={d.damageMaxPercent}
-              readOnly={readOnly}
-              onChange={(v) => patch(d.id, { damageMaxPercent: v })}
-            />
-            <NumPercent
-              label="想定%"
-              value={d.actualDamagePercent}
-              readOnly={readOnly}
-              onChange={(v) => patch(d.id, { actualDamagePercent: v })}
-            />
-          </div>
-          <textarea
-            value={d.calcText ?? ""}
-            disabled={readOnly}
-            onChange={(e) => patch(d.id, { calcText: e.target.value })}
-            placeholder="ダメ計結果の貼り付け（例：すてみタックル → HBサンダー 42.3〜50.8%）"
-            className="mb-1.5 min-h-[40px] !text-xs"
-          />
-          <input
-            value={d.note ?? ""}
-            disabled={readOnly}
-            onChange={(e) => patch(d.id, { note: e.target.value })}
-            placeholder="備考（確定数・乱数・反動・先制圏内・スカーフ圏内など）"
-            className="!py-0.5 !text-xs"
-          />
-          {(d.attackerId || d.defenderId) && (
-            <div className="mt-1.5 text-[11px] text-slate-500">
-              {nameOf(d.attackerId)} → {nameOf(d.defenderId)}
-              {d.damageMinPercent != null && d.damageMaxPercent != null && (
-                <span className="ml-1 text-slate-400">
-                  {d.damageMinPercent}〜{d.damageMaxPercent}%
-                </span>
-              )}
-            </div>
-          )}
-          {!readOnly && (
-            <div className="mt-2 flex justify-end">
-              <button
-                onClick={() => remove(d.id)}
-                className="text-[11px] text-slate-500 hover:text-rose-400"
-              >
-                このダメージメモを削除
-              </button>
-            </div>
-          )}
-        </div>
+        <DamageNoteCard key={d.id} node={node} d={d} />
       ))}
       {!readOnly && (
         <Button size="sm" variant="secondary" className="w-full" onClick={add}>
-          + ダメージメモを追加
+          + 空のダメージメモを追加
         </Button>
       )}
     </div>

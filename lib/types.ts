@@ -109,6 +109,11 @@ export type DamageNote = {
   damageMaxPercent?: number;
   actualDamagePercent?: number;
 
+  // Phase 4: ダメージ計算補助
+  koText?: string; // 確定数メモ（確定2発 / 乱数1発 など）
+  inPriorityRange?: boolean; // 先制技圏内
+  inScarfRange?: boolean; // スカーフ（最速スカーフ等）圏内
+
   calcText?: string;
   note?: string;
 };
@@ -206,10 +211,15 @@ export type TurnNode = {
   updatedAt: string;
 };
 
+// レギュレーションID。詳細メタデータは lib/regulations.ts のレジストリが正。
+// string 型にして、新レギュレーション (M-B など) のデータを型エラーなく受け入れる。
+export type RegulationId = string;
+
 export type ReviewProject = {
   id: string;
   title: string;
   mode: BattleMode;
+  regulation: RegulationId;
 
   myTeam: PokemonSet[];
   opponentTeam: PokemonSet[];

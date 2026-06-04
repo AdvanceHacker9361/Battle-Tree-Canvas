@@ -8,13 +8,18 @@ import { Modal } from "@/components/Modal";
 import { BATTLE_MODES } from "@/lib/constants";
 import { createProject } from "@/lib/factory";
 import {
+  selectableRegulations,
+  getRegulation,
+  DEFAULT_REGULATION_ID,
+} from "@/lib/regulations";
+import {
   listProjects,
   saveProject,
   deleteProject,
   upsertImported,
 } from "@/lib/storage";
 import { importProjectFromFile } from "@/lib/io";
-import type { BattleMode, ReviewProject } from "@/lib/types";
+import type { BattleMode, RegulationId, ReviewProject } from "@/lib/types";
 
 function formatDate(iso: string): string {
   try {
@@ -59,6 +64,7 @@ export default function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newMode, setNewMode] = useState<BattleMode>("single");
+  const [newRegulation, setNewRegulation] = useState<RegulationId>(DEFAULT_REGULATION_ID);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +76,11 @@ export default function DashboardPage() {
   }, []);
 
   const handleCreate = () => {
-    const project = createProject(newTitle.trim() || "無題のプロジェクト", newMode);
+    const project = createProject(
+      newTitle.trim() || "無題のプロジェクト",
+      newMode,
+      newRegulation
+    );
     saveProject(project);
     router.push(`/project/?id=${project.id}`);
   };
@@ -175,9 +185,14 @@ export default function DashboardPage() {
                       <h3 className="line-clamp-2 font-semibold text-slate-100 group-hover:text-white">
                         {p.title}
                       </h3>
-                      <Badge className="shrink-0 border-slate-700 bg-slate-800 text-slate-300">
-                        {mode?.label}
-                      </Badge>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <Badge className="border-slate-700 bg-slate-800 text-slate-300">
+                          {mode?.label}
+                        </Badge>
+                        <Badge className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+                          {getRegulation(p.regulation).label}
+                        </Badge>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -260,6 +275,30 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
+          </Field>
+          <Field label="レギュレーション">
+            <div className="flex gap-2">
+              {selectableRegulations().map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setNewRegulation(r.id)}
+                  title={r.description}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    newRegulation === r.id
+                      ? "border-blue-500 bg-blue-500/15 text-blue-200"
+                      : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600"
+                  }`}
+                >
+                  {r.label}
+                  {r.status === "upcoming" && (
+                    <span className="ml-1 text-xs text-amber-400/80">移行予定</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {getRegulation(newRegulation).description}
+            </p>
           </Field>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setShowCreate(false)}>

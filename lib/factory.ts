@@ -8,8 +8,10 @@ import type {
   ActivePokemon,
   DamageNote,
   MegaLandingCheck,
+  RegulationId,
 } from "./types";
 import { SCHEMA_VERSION, BATTLE_MODES } from "./constants";
+import { DEFAULT_REGULATION_ID } from "./regulations";
 
 export function uid(prefix = ""): string {
   // crypto.randomUUID はブラウザ/Node双方で利用可能。
@@ -123,7 +125,8 @@ export function createNode(
 
 export function createProject(
   title: string,
-  mode: BattleMode
+  mode: BattleMode,
+  regulation: RegulationId = DEFAULT_REGULATION_ID
 ): ReviewProject {
   const ts = nowIso();
   const root = createNode(mode, { turnNumber: 1, title: "Turn 1：初手局面" });
@@ -131,6 +134,7 @@ export function createProject(
     id: uid("proj"),
     title: title || "無題のプロジェクト",
     mode,
+    regulation,
     myTeam: emptyTeam(),
     opponentTeam: emptyTeam(),
     rootNodeId: root.id,

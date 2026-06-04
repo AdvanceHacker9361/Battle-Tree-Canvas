@@ -1,6 +1,7 @@
 // localStorage 永続化レイヤ。
 import type { ReviewProject } from "./types";
 import { SCHEMA_VERSION } from "./constants";
+import { DEFAULT_REGULATION_ID } from "./regulations";
 
 const STORAGE_KEY = "btc.projects.v1";
 
@@ -78,6 +79,8 @@ export function normalizeProject(input: unknown): ReviewProject {
     id: p.id || `proj_${Math.random().toString(36).slice(2)}`,
     title: p.title || "無題のプロジェクト",
     mode: p.mode === "double" ? "double" : "single",
+    // 旧データ (regulation 無し) は既定の M-A として扱う。
+    regulation: p.regulation || DEFAULT_REGULATION_ID,
     myTeam: Array.isArray(p.myTeam) ? p.myTeam : [],
     opponentTeam: Array.isArray(p.opponentTeam) ? p.opponentTeam : [],
     rootNodeId: p.rootNodeId,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Section, Field, Badge, Button } from "@/components/ui";
 import { BATTLE_MODES } from "@/lib/constants";
+import { selectableRegulations, getRegulation } from "@/lib/regulations";
 import { useEditor } from "./EditorContext";
 
 function TagEditor() {
@@ -95,6 +96,23 @@ export function OverviewEditor() {
                 作成後の変更不可（盤面スロット数に影響するため）
               </span>
             </div>
+          </Field>
+          <Field label="レギュレーション" hint="（環境移行時に切り替え可）">
+            <select
+              value={project.regulation}
+              disabled={readOnly}
+              onChange={(e) => mutate((p) => ({ ...p, regulation: e.target.value }))}
+            >
+              {selectableRegulations().map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.fullName}
+                  {r.status === "upcoming" ? "（移行予定）" : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {getRegulation(project.regulation).focusNote}
+            </p>
           </Field>
           <Field label="タグ" hint="（対面・受け・追い風・トリル など）">
             <TagEditor />
