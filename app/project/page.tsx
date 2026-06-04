@@ -22,7 +22,7 @@ type Tab = "overview" | "tree" | "compare";
 const TABS: { value: Tab; label: string }[] = [
   { value: "overview", label: "概要・構築" },
   { value: "tree", label: "ツリー編集" },
-  { value: "compare", label: "ルート比較" },
+  { value: "compare", label: "比較・レビュー" },
 ];
 
 function ProjectEditor() {

@@ -15,6 +15,8 @@ export type PokemonSet = {
   ability?: string;
   moves: string[];
 
+  teraType?: string;
+
   nature?: string;
   evs?: Partial<Record<StatName, number>>;
   stats?: Partial<Record<StatName, number>>;

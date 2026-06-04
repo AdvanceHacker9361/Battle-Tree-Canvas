@@ -20,6 +20,13 @@ function migrateNode(node: TurnNode): TurnNode {
       : a;
   next.myAction = fixAction(next.myAction);
   next.opponentAction = fixAction(next.opponentAction);
+  // Pokémon Champions に「霰」は無いため旧データの天候を「雪」に寄せる。
+  if (next.boardState?.field?.weather === "霰/雪" || next.boardState?.field?.weather === "霰") {
+    next.boardState = {
+      ...next.boardState,
+      field: { ...next.boardState.field, weather: "雪" },
+    };
+  }
   return next;
 }
 

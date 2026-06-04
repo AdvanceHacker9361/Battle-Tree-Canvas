@@ -1,13 +1,18 @@
 "use client";
 
-import { Badge, Dot, EmptyState } from "@/components/ui";
+import { useState } from "react";
+import { Badge, Dot, EmptyState, Button } from "@/components/ui";
 import {
   RISK_COLOR_MAP,
   LINE_TAG_MAP,
+  LINE_TAGS,
+  RISK_COLORS,
   MEGA_DEPENDENCY_OPTIONS,
   NON_MEGA_AUTONOMY_OPTIONS,
 } from "@/lib/constants";
 import { getLeafRoutes } from "@/lib/tree";
+import { projectToMarkdown } from "@/lib/markdown";
+import { exportMarkdownToFile } from "@/lib/io";
 import type { ReviewProject, TurnNode } from "@/lib/types";
 import { useEditor } from "./EditorContext";
 
@@ -138,29 +143,171 @@ function NodeList({
   );
 }
 
+// 件数を順序付きで集計する小コンポーネント。
+function CountRow({
+  label,
+  count,
+  total,
+  dot,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  dot?: string;
+}) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      {dot && <Dot className={dot} />}
+      <span className="w-20 shrink-0 text-xs text-slate-300">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full rounded-full bg-slate-500" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-6 shrink-0 text-right text-xs tabular-nums text-slate-400">{count}</span>
+    </div>
+  );
+}
+
+function AggregationSummary({ project }: { project: ReviewProject }) {
+  const nodes = Object.values(project.nodes);
+  const routes = getLeafRoutes(project);
+  const total = nodes.length;
+
+  const tagCounts = LINE_TAGS.map((t) => ({
+    ...t,
+    count: nodes.filter((n) => n.lineTag === t.value).length,
+  })).filter((t) => t.count > 0);
+
+  const riskCounts = RISK_COLORS.map((c) => ({
+    ...c,
+    count: nodes.filter((n) => n.riskColor === c.value).length,
+  })).filter((c) => c.count > 0);
+
+  const depCounts = MEGA_DEPENDENCY_OPTIONS.map((o) => ({
+    ...o,
+    count: routes.filter(
+      (r) => lastDefined(r, (n) => n.routeEvaluation?.megaDependency) === o.value
+    ).length,
+  })).filter((o) => o.count > 0);
+
+  const autoCounts = NON_MEGA_AUTONOMY_OPTIONS.map((o) => ({
+    ...o,
+    count: routes.filter(
+      (r) => lastDefined(r, (n) => n.routeEvaluation?.nonMegaAutonomy) === o.value
+    ).length,
+  })).filter((o) => o.count > 0);
+
+  const card = "rounded-xl border border-slate-800 bg-slate-900/40 p-4";
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={card}>
+        <h3 className="mb-2.5 text-xs font-semibold text-slate-300">勝ち筋ラベル集計</h3>
+        <div className="space-y-1.5">
+          {tagCounts.length === 0 ? (
+            <p className="text-[11px] text-slate-600">ラベル未設定</p>
+          ) : (
+            tagCounts.map((t) => (
+              <CountRow key={t.value} label={t.label} count={t.count} total={total} />
+            ))
+          )}
+        </div>
+      </div>
+      <div className={card}>
+        <h3 className="mb-2.5 text-xs font-semibold text-slate-300">リスク色集計</h3>
+        <div className="space-y-1.5">
+          {riskCounts.map((c) => (
+            <CountRow key={c.value} label={c.label} count={c.count} total={total} dot={c.dot} />
+          ))}
+        </div>
+      </div>
+      <div className={card}>
+        <h3 className="mb-2.5 text-xs font-semibold text-slate-300">メガ依存度集計（ルート別）</h3>
+        <div className="space-y-1.5">
+          {depCounts.length === 0 ? (
+            <p className="text-[11px] text-slate-600">未設定</p>
+          ) : (
+            depCounts.map((o) => (
+              <CountRow key={o.value} label={o.label} count={o.count} total={routes.length} />
+            ))
+          )}
+        </div>
+      </div>
+      <div className={card}>
+        <h3 className="mb-2.5 text-xs font-semibold text-slate-300">非メガ自立性集計（ルート別）</h3>
+        <div className="space-y-1.5">
+          {autoCounts.length === 0 ? (
+            <p className="text-[11px] text-slate-600">未設定</p>
+          ) : (
+            autoCounts.map((o) => (
+              <CountRow key={o.value} label={o.label} count={o.count} total={routes.length} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarkdownExportBar({ project }: { project: ReviewProject }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(projectToMarkdown(project));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-slate-500">構築記事用エクスポート:</span>
+      <Button size="sm" variant="secondary" onClick={handleCopy}>
+        {copied ? "Markdownをコピー済" : "Markdownをコピー"}
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => exportMarkdownToFile(project.title, projectToMarkdown(project))}
+      >
+        Markdownをダウンロード
+      </Button>
+    </div>
+  );
+}
+
 export function RouteCompare({ onSelectNode }: { onSelectNode: (id: string) => void }) {
   const { project } = useEditor();
   const all = Object.values(project.nodes);
   const collapsePoints = all.filter((n) => n.lineTag === "collapse_point");
   const losingLines = all.filter((n) => n.lineTag === "losing_line");
-
-  if (Object.keys(project.nodes).length <= 1) {
-    return (
-      <EmptyState
-        title="比較するルートがまだありません"
-        description="ツリー編集タブで分岐ノードを追加すると、末端までのルートが自動的に一覧化されます。"
-      />
-    );
-  }
+  const hasBranches = Object.keys(project.nodes).length > 1;
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-200">ルート比較・レビュー</h2>
+        <MarkdownExportBar project={project} />
+      </div>
+
+      <AggregationSummary project={project} />
+
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-slate-200">ルート比較</h2>
+        <h3 className="mb-2 text-sm font-semibold text-slate-200">ルート一覧</h3>
         <p className="mb-3 text-xs text-slate-500">
           末端ノードまでの各ルートを横並びで比較します（入力済みのラベル・評価を集計するだけで、AI分析は行いません）。行をクリックすると該当ノードを開きます。
         </p>
-        <RouteTable project={project} onSelect={onSelectNode} />
+        {hasBranches ? (
+          <RouteTable project={project} onSelect={onSelectNode} />
+        ) : (
+          <EmptyState
+            title="まだ分岐がありません"
+            description="ツリー編集タブで分岐ノードを追加すると、末端までのルートが一覧化されます。"
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

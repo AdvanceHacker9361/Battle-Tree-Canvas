@@ -117,7 +117,8 @@ export const BATTLE_MODES: { value: BattleMode; label: string; slots: number }[]
 ];
 
 // 共通色トークン
-export const COMMON_WEATHERS = ["晴れ", "雨", "砂", "霰/雪", "なし"];
+// Pokémon Champions に「霰」は存在せず「雪」のみ。
+export const COMMON_WEATHERS = ["晴れ", "雨", "砂", "雪", "なし"];
 export const COMMON_TERRAINS = ["エレキ", "グラス", "サイコ", "ミスト", "なし"];
 export const COMMON_HAZARDS = ["ステルスロック", "まきびし", "どくびし", "ねばねばネット"];
 export const COMMON_SCREENS = ["リフレクター", "ひかりのかべ", "オーロラベール"];
