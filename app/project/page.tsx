@@ -131,7 +131,7 @@ function ProjectEditor() {
       <div className="flex h-screen flex-col overflow-hidden">
         <TopBar subtitle={project.title}>
           <Button size="sm" variant="ghost" onClick={() => router.push("/")}>
-            ← 一覧
+            ← ダッシュボード
           </Button>
           <Button size="sm" variant="secondary" onClick={() => exportProjectToFile(project)}>
             JSON書き出し

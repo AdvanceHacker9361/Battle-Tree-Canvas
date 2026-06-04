@@ -13,6 +13,12 @@
 
 （次回リリース予定の変更をここに追記）
 
+## [0.1.1] - 2026-06-04
+
+### Changed
+
+- プロジェクト画面ヘッダーのナビゲーションボタン「← 一覧」を「← ダッシュボード」に改名。
+
 ## [0.1.0] - 2026-06-04
 
 初回リリース。企画書「Battle Tree Canvas」Phase 1〜5 を実装。
@@ -38,5 +44,6 @@
 - 本プロダクトは AI 分析・最善手提案・構築診断・自動勝率計算を**行わない**手動キャンバス。
 - Pokémon Champions の仕様に合わせ、天候は「雪」（霰なし）。テラスタルは M-B まで未解禁のため**非対応**。
 
-[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/releases/tag/v0.1.0
