@@ -102,27 +102,31 @@ function TeamEditorInner() {
   }
 
   const setPokemon = (pokemon: PokemonSet[]) => patch({ pokemon });
+  const isOpponent = team.kind === "opponent";
+  const kindLabel = isOpponent ? "相手テンプレート" : "マイ構築";
 
   return (
     <div className="min-h-screen">
-      <TopBar subtitle={<span>マイ構築 / {team.name}</span>}>
+      <TopBar subtitle={<span>{kindLabel} / {team.name}</span>}>
         <Button size="sm" variant="ghost" onClick={() => router.push("/")}>
           ← ダッシュボード
         </Button>
-        <Button size="sm" variant="primary" onClick={openSim}>
-          この構築でシミュレーション作成
-        </Button>
+        {!isOpponent && (
+          <Button size="sm" variant="primary" onClick={openSim}>
+            この構築でシミュレーション作成
+          </Button>
+        )}
       </TopBar>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Section title="マイ構築の情報">
+          <Section title={`${kindLabel}の情報`}>
             <div className="space-y-4">
-              <Field label="マイ構築名">
+              <Field label={`${kindLabel}名`}>
                 <input
                   value={team.name}
                   onChange={(e) => patch({ name: e.target.value })}
-                  placeholder="例：メガガルーラ軸スタン"
+                  placeholder={isOpponent ? "例：受けサイクル / 追い風スタン" : "例：メガガルーラ軸スタン"}
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
@@ -167,13 +171,15 @@ function TeamEditorInner() {
         <TeamGrid
           team={team.pokemon}
           onChange={setPokemon}
-          side="my"
+          side={isOpponent ? "opp" : "my"}
           title="構築（6体）"
         />
 
         <p className="mt-6 text-xs text-slate-500">
-          {getRegulation(team.regulation).label} のマイ構築。「この構築でシミュレーション作成」で、
-          この6体を入れたシミュレーション（プロジェクト）を新規作成できます。
+          {getRegulation(team.regulation).label} の{kindLabel}。
+          {isOpponent
+            ? "プロジェクトの「相手の想定構築」欄の『テンプレート読込』から、この6体を読み込めます。"
+            : "「この構築でシミュレーション作成」で、この6体を入れたシミュレーション（プロジェクト）を新規作成できます。"}
         </p>
       </main>
 

@@ -9,6 +9,7 @@ import type {
   DamageNote,
   RegulationId,
   SavedTeam,
+  TeamKind,
 } from "./types";
 import { SCHEMA_VERSION, BATTLE_MODES } from "./constants";
 import { DEFAULT_REGULATION_ID } from "./regulations";
@@ -62,12 +63,14 @@ export function createSavedTeam(
   name: string,
   mode: BattleMode,
   regulation: RegulationId = DEFAULT_REGULATION_ID,
-  pokemon?: PokemonSet[]
+  pokemon?: PokemonSet[],
+  kind: TeamKind = "my"
 ): SavedTeam {
   const ts = nowIso();
   return {
     id: uid("team"),
-    name: name || "無題のマイ構築",
+    name: name || (kind === "opponent" ? "無題の相手テンプレート" : "無題のマイ構築"),
+    kind,
     mode,
     regulation,
     pokemon: pokemon ? clonePokemonTeam(pokemon) : emptyTeam(),

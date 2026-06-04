@@ -209,10 +209,15 @@ export type ReviewProject = {
   updatedAt: string;
 };
 
-// 再利用可能な「マイ構築」(自分の6体)。複数のシミュレーション(プロジェクト)の起点になる。
+// 保存済みチーム。kind で「自分のマイ構築」と「相手テンプレート」を区別する。
+// my   … 複数のシミュレーション(プロジェクト)の起点になる自分の構築。
+// opponent … プロジェクトの相手構築欄へ読み込む想定相手のテンプレート。
+export type TeamKind = "my" | "opponent";
+
 export type SavedTeam = {
   id: string;
   name: string;
+  kind: TeamKind;
   mode: BattleMode; // 既定の対戦形式
   regulation: RegulationId;
   pokemon: PokemonSet[];

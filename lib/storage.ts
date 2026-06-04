@@ -158,14 +158,20 @@ function writeTeamStore(store: TeamStore): void {
   }
 }
 
+// 旧データ (kind 無し) は「自分のマイ構築」として扱う。
+function migrateTeam(team: SavedTeam): SavedTeam {
+  return { ...team, kind: team.kind === "opponent" ? "opponent" : "my" };
+}
+
 export function listTeams(): SavedTeam[] {
-  return Object.values(readTeamStore()).sort(
-    (a, b) => (b.updatedAt > a.updatedAt ? 1 : -1)
-  );
+  return Object.values(readTeamStore())
+    .map(migrateTeam)
+    .sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1));
 }
 
 export function getTeam(id: string): SavedTeam | null {
-  return readTeamStore()[id] ?? null;
+  const t = readTeamStore()[id];
+  return t ? migrateTeam(t) : null;
 }
 
 export function saveTeam(team: SavedTeam): void {

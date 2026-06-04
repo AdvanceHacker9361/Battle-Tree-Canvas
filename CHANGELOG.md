@@ -13,6 +13,19 @@
 
 （次回リリース予定の変更をここに追記）
 
+## [0.3.0] - 2026-06-04
+
+### Added
+
+- **相手テンプレート** — 想定相手の構築をテンプレートとして保存・編集・複製・削除できるようにした（`SavedTeam` に `kind: "my" | "opponent"` を追加し、ライブラリを共用）。
+- **組み込みプリセット** — アプリ同梱の相手テンプレートを追加（第1弾: ガブギルガルド受け回し系 / M-Aシングル）。ダッシュボードに「プリセット」として表示し、「複製して編集」で自分用に取り込める。
+- プロジェクトの「相手の想定構築」欄に **テンプレート読込** を追加。プリセット・保存済みテンプレートから6体をコピー適用できる。
+- ダッシュボードに「相手テンプレート」セクションを追加。「+ 相手テンプレート」で新規作成。
+
+### Changed
+
+- マイ構築編集ページ `/team` を kind に応じて表示（自分/相手）対応に一般化。
+
 ## [0.2.0] - 2026-06-04
 
 ### Added
@@ -58,7 +71,8 @@
 - 本プロダクトは AI 分析・最善手提案・構築診断・自動勝率計算を**行わない**手動キャンバス。
 - Pokémon Champions の仕様に合わせ、天候は「雪」（霰なし）。テラスタルは M-B まで未解禁のため**非対応**。
 
-[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AdvanceHacker9361/Battle-Tree-Canvas/releases/tag/v0.1.0

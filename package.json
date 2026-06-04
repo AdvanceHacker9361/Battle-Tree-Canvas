@@ -1,6 +1,6 @@
 {
   "name": "battle-tree-canvas",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "競技ポケモン向け ツリー式 対戦シミュレート用メモアプリ (Regulation M-A)",
   "scripts": {

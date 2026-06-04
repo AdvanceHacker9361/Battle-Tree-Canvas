@@ -22,7 +22,14 @@ import {
   deleteTeam,
 } from "@/lib/storage";
 import { importProjectFromFile } from "@/lib/io";
-import type { BattleMode, RegulationId, ReviewProject, SavedTeam } from "@/lib/types";
+import { PRESET_OPPONENT_TEAMS } from "@/lib/presetTemplates";
+import type {
+  BattleMode,
+  RegulationId,
+  ReviewProject,
+  SavedTeam,
+  TeamKind,
+} from "@/lib/types";
 
 function formatDate(iso: string): string {
   try {
@@ -85,21 +92,33 @@ export default function DashboardPage() {
   const teamName = (teamId?: string) =>
     teamId ? teams.find((t) => t.id === teamId)?.name : undefined;
 
-  // ---- マイ構築 ----
-  const handleCreateTeam = () => {
-    const team = createSavedTeam("新しいマイ構築", newMode, newRegulation);
+  const myTeams = teams.filter((t) => t.kind === "my");
+  const opponentTeams = teams.filter((t) => t.kind === "opponent");
+
+  // ---- マイ構築 / 相手テンプレート ----
+  const handleCreateTeam = (kind: TeamKind) => {
+    const name = kind === "opponent" ? "新しい相手テンプレート" : "新しいマイ構築";
+    const team = createSavedTeam(name, newMode, newRegulation, undefined, kind);
     saveTeam(team);
     router.push(`/team/?id=${team.id}`);
   };
 
   const handleDuplicateTeam = (t: SavedTeam) => {
-    const copy = createSavedTeam(`${t.name} のコピー`, t.mode, t.regulation, t.pokemon);
+    const copy = createSavedTeam(`${t.name} のコピー`, t.mode, t.regulation, t.pokemon, t.kind);
     saveTeam(copy);
     refresh();
   };
 
+  // プリセット(読み取り専用)を編集可能な相手テンプレートとして複製し、編集画面へ。
+  const handleDuplicatePresetToLibrary = (t: SavedTeam) => {
+    const copy = createSavedTeam(t.name, t.mode, t.regulation, t.pokemon, "opponent");
+    saveTeam(copy);
+    router.push(`/team/?id=${copy.id}`);
+  };
+
   const handleDeleteTeam = (t: SavedTeam) => {
-    if (!confirmAction(`マイ構築「${t.name}」を削除します。よろしいですか？（作成済みのシミュレーションは残ります）`))
+    const label = t.kind === "opponent" ? "相手テンプレート" : "マイ構築";
+    if (!confirmAction(`${label}「${t.name}」を削除します。よろしいですか？（作成済みのシミュレーションは残ります）`))
       return;
     deleteTeam(t.id);
     refresh();
@@ -177,8 +196,11 @@ export default function DashboardPage() {
         <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
           JSONインポート
         </Button>
-        <Button variant="secondary" size="sm" onClick={handleCreateTeam}>
+        <Button variant="secondary" size="sm" onClick={() => handleCreateTeam("my")}>
           + マイ構築
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => handleCreateTeam("opponent")}>
+          + 相手テンプレート
         </Button>
         <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
           + 新規プロジェクト
@@ -200,7 +222,7 @@ export default function DashboardPage() {
         )}
 
         {/* マイ構築セクション */}
-        {loaded && teams.length > 0 && (
+        {loaded && myTeams.length > 0 && (
           <section className="mb-10">
             <div className="mb-3 flex items-center gap-2">
               <h2 className="text-sm font-semibold text-slate-200">マイ構築</h2>
@@ -209,7 +231,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {teams.map((t) => {
+              {myTeams.map((t) => {
                 const tMode = BATTLE_MODES.find((m) => m.value === t.mode);
                 const simCount = projects.filter((p) => p.sourceTeamId === t.id).length;
                 return (
@@ -251,6 +273,88 @@ export default function DashboardPage() {
                       <Button size="sm" variant="ghost" onClick={() => handleDeleteTeam(t)}>
                         <span className="text-rose-400">削除</span>
                       </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 相手テンプレートセクション (プリセット + 保存済み) */}
+        {loaded && (
+          <section className="mb-10">
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-200">相手テンプレート</h2>
+              <span className="text-xs text-slate-600">
+                想定相手の構築。プロジェクトの相手構築欄に「テンプレート読込」で適用できます。
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[...PRESET_OPPONENT_TEAMS, ...opponentTeams].map((t) => {
+                const tMode = BATTLE_MODES.find((m) => m.value === t.mode);
+                const isPreset = t.id.startsWith("preset_");
+                return (
+                  <div
+                    key={t.id}
+                    className="group flex flex-col rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition-colors hover:border-slate-700"
+                  >
+                    <button
+                      onClick={() =>
+                        isPreset
+                          ? handleDuplicatePresetToLibrary(t)
+                          : router.push(`/team/?id=${t.id}`)
+                      }
+                      className="flex-1 text-left"
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <h3 className="line-clamp-2 font-semibold text-slate-100 group-hover:text-white">
+                          {t.name}
+                        </h3>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          {isPreset && (
+                            <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-300">
+                              プリセット
+                            </Badge>
+                          )}
+                          <Badge className="border-slate-700 bg-slate-800 text-slate-300">
+                            {tMode?.label}
+                          </Badge>
+                          <Badge className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+                            {getRegulation(t.regulation).label}
+                          </Badge>
+                        </div>
+                      </div>
+                      <TeamIcons team={t.pokemon} />
+                      {!isPreset && (
+                        <div className="mt-3 text-[11px] text-slate-500">
+                          更新 {formatDate(t.updatedAt)}
+                        </div>
+                      )}
+                    </button>
+                    <div className="mt-3 flex items-center gap-1 border-t border-slate-800 pt-3">
+                      {isPreset ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleDuplicatePresetToLibrary(t)}
+                        >
+                          複製して編集
+                        </Button>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => router.push(`/team/?id=${t.id}`)}>
+                            編集
+                          </Button>
+                          <div className="flex-1" />
+                          <Button size="sm" variant="ghost" onClick={() => handleDuplicateTeam(t)}>
+                            複製
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteTeam(t)}>
+                            <span className="text-rose-400">削除</span>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
